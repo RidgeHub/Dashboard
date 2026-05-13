@@ -777,7 +777,7 @@ async function loadEmail(){
   if(!googleToken){notice.style.display='';el.innerHTML='<div class="empty">Connect Gmail above</div>';return 0;}
   notice.style.display='none';
   try{
-    const queries=['is:starred is:unread','from:@ridgelineei.com to:me is:unread newer_than:3d'];
+    const queries=['is:starred is:unread after:2025/05/01','from:@ridgelineei.com to:me is:unread after:2025/05/01'];
     const allIds=new Set();
     for(const q of queries){
       const res=await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${encodeURIComponent(q)}&maxResults=10`,{headers:{Authorization:`Bearer ${googleToken}`}});
@@ -790,15 +790,20 @@ async function loadEmail(){
     const dismissed=JSON.parse(localStorage.getItem('dash_dismissed_emails')||'[]');
     const msgs=await Promise.all([...allIds].slice(0,10).map(async id=>{
       if(dismissed.includes(id))return null;
-      const r=await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${id}?format=metadata&metadataHeaders=From,Subject,To,Date`,{headers:{Authorization:`Bearer ${googleToken}`}});
+      const r=await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${id}?format=full`,{headers:{Authorization:`Bearer ${googleToken}`}});
       if(!r.ok)return null; return r.json();
     }));
     const valid=msgs.filter(Boolean);
     if(!valid.length){el.innerHTML='<div class="empty">No flagged emails</div>';return 0;}
     let actionCount=0;
     el.innerHTML=valid.map(msg=>{
-      const headers=msg.payload?.headers||[];
-      const get=name=>(headers.find(h=>h.name.toLowerCase()===name.toLowerCase())||{}).value||'';
+      // Collect all headers from payload and any parts
+      const allHeaders=[...(msg.payload?.headers||[])];
+      const get=name=>{
+        const h=allHeaders.find(h=>h.name.toLowerCase()===name.toLowerCase());
+        return h?h.value:'';
+      };
+      const headers=allHeaders;
       const from=get('From').replace(/<.*>/,'').trim();
       const subject=get('Subject')||'(No subject)';
       const snippet=msg.snippet||'';

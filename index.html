@@ -72,6 +72,8 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .task-item{display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);font-size:12px}
 .task-item:last-child{border-bottom:none}
 .task-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:4px}
+.task-check{width:18px;height:18px;border-radius:4px;border:1.5px solid var(--border2);cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;color:transparent;transition:all 0.15s;margin-top:1px}
+.task-check:hover{border-color:var(--green);color:var(--green)}
 .task-col-dot{background:var(--blue)}
 .task-col-today{background:var(--accent)}
 .task-col-week{background:var(--green)}
@@ -96,11 +98,16 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .cal-soon{color:var(--yellow)}
 
 /* ── Email ── */
-.email-item{padding:8px 0;border-bottom:1px solid var(--border);font-size:12px}
+.email-item{padding:8px 0;border-bottom:1px solid var(--border);font-size:13px}
+.email-header-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:2px}
+.email-actions{display:flex;gap:4px;opacity:0;transition:opacity 0.15s;flex-shrink:0}
+.email-item:hover .email-actions{opacity:1}
+.email-action-btn{background:none;border:1px solid var(--border2);border-radius:4px;padding:2px 7px;font-size:11px;color:var(--text2);cursor:pointer;text-decoration:none;font-family:var(--mono);transition:all 0.15s}
+.email-action-btn:hover{background:var(--surface2);color:var(--text)}
 .email-item:last-child{border-bottom:none}
 .email-from{font-weight:600;font-size:11px;color:var(--text2);margin-bottom:2px;font-family:var(--mono)}
-.email-subject{font-weight:500;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.email-snippet{font-size:11px;color:var(--text2);line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.email-subject{font-weight:600;font-size:13px;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.email-snippet{font-size:12px;color:var(--text2);line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .email-tag{display:inline-block;font-size:9px;font-family:var(--mono);padding:1px 6px;border-radius:99px;margin-top:3px}
 .tag-action{background:var(--accent);color:#fff}
 .tag-question{background:var(--yellow-bg);color:var(--yellow);border:1px solid rgba(240,192,64,0.3)}
@@ -263,8 +270,8 @@ input::placeholder,textarea::placeholder{color:var(--text3)}
   <div class="modal">
     <div class="modal-title">Settings</div>
     <div class="form-group"><div class="form-label">GitHub Token</div><input type="password" id="ghTokenInput" placeholder="ghp_…"/></div>
-    <div class="form-group"><div class="form-label">Anthropic API Key</div><textarea id="anthropicKeyInput" placeholder="sk-ant-…" style="min-height:80px;font-family:var(--mono);font-size:12px;resize:vertical;"></textarea></div>
-    <div class="info-box">Google Calendar &amp; Gmail connect via the button in each panel. Tokens saved in this browser only.</div>
+
+    <div class="info-box">Google Calendar &amp; Gmail connect via the button in each panel. GitHub token saved in this browser only.</div>
     <div class="modal-actions">
       <button class="btn" onclick="closeSettings()">Cancel</button>
       <button class="btn btn-primary" onclick="saveSettings()">Save</button>
@@ -416,8 +423,8 @@ async function loadTasks(){
       const dueStr = c.due ? new Date(c.due+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '';
       const overdue = c.due && new Date(c.due+'T00:00:00') < new Date() && c.col !== 'done';
       const priHTML = c.priority ? `<span class="task-priority pri-${c.priority}">${c.priority}</span>` : '';
-      return `<div class="task-item">
-        <div class="task-dot ${colDot[c.col]||'task-col-dot'}"></div>
+      return `<div class="task-item" id="task-${c.id}">
+        <div class="task-check" onclick="completeTask('${c.id}')" title="Mark done">✓</div>
         <div class="task-info">
           <div class="task-name">${esc(c.name||c.task||'Untitled')}</div>
           <div class="task-meta">${c.proj?'#'+esc(c.proj)+' · ':''}${dueStr?`<span class="${overdue?'task-due':''}">${overdue?'⚠ ':''} ${dueStr}</span>`:''}
@@ -463,6 +470,30 @@ async function saveNewTask(){
     closeNewTask();
     setTimeout(loadTasks, 1000);
   } catch(e){ alert('Failed to save task: ' + e.message); }
+}
+
+async function completeTask(cardId){
+  const token = getGHToken();
+  if(!token){ alert('Enter your GitHub token in Settings.'); return; }
+  const el = document.getElementById('task-'+cardId);
+  if(el){ el.style.opacity='0.4'; el.style.pointerEvents='none'; }
+  try {
+    const res = await fetch(`https://api.github.com/repos/${TASKS_REPO}/contents/${TASKS_FILE}`, { headers:{Authorization:`token ${token}`,Accept:'application/vnd.github.v3+json'} });
+    if(!res.ok) throw new Error();
+    const d = await res.json();
+    const sha = d.sha;
+    const data = JSON.parse(atob(d.content.replace(/\n/g,'')));
+    const cards = data.cards || data;
+    const card = cards.find(c=>c.id===cardId);
+    if(card){ card.col='done'; card.taskDone=true; card.movedAt=Date.now(); }
+    const payload = data.cards ? {...data, cards} : {cards, archived: data.archived||[]};
+    await fetch(`https://api.github.com/repos/${TASKS_REPO}/contents/${TASKS_FILE}`, {
+      method:'PUT',
+      headers:{Authorization:`token ${token}`,Accept:'application/vnd.github.v3+json','Content-Type':'application/json'},
+      body: JSON.stringify({message:'Complete task from dashboard', content:btoa(unescape(encodeURIComponent(JSON.stringify(payload,null,2)))), sha})
+    });
+    if(el) el.remove();
+  } catch(e){ if(el){el.style.opacity='1';el.style.pointerEvents='';} alert('Failed to update task.'); }
 }
 
 /* ═══════════════════════════════
@@ -527,26 +558,38 @@ async function loadEmail(){
     if(!allThreadIds.size){ el.innerHTML='<div class="empty">No flagged emails</div>'; return 0; }
     // Fetch message details
     const msgs = await Promise.all([...allThreadIds].slice(0,8).map(async id => {
-      const r = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${id}?format=metadata&metadataHeaders=From,Subject,To`, { headers:{Authorization:`Bearer ${googleToken}`} });
+      const r = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${id}?format=metadata&metadataHeaders=From,Subject,To,Date`, { headers:{Authorization:`Bearer ${googleToken}`} });
       if(!r.ok) return null;
       return r.json();
     }));
     const valid = msgs.filter(Boolean);
     if(!valid.length){ el.innerHTML='<div class="empty">No flagged emails</div>'; return 0; }
     let actionCount = 0;
-    el.innerHTML = valid.map(msg => {
+    // Store dismissed emails
+    const dismissed = JSON.parse(localStorage.getItem('dash_dismissed_emails')||'[]');
+    const filtered = valid.filter(m => !dismissed.includes(m.id));
+    if(!filtered.length){ el.innerHTML='<div class="empty">No flagged emails</div>'; return 0; }
+    el.innerHTML = filtered.map(msg => {
       const headers = msg.payload?.headers||[];
-      const get = name => headers.find(h=>h.name===name)?.value||'';
+      const get = name => (headers.find(h=>h.name.toLowerCase()===name.toLowerCase())||{}).value||'';
       const from    = get('From').replace(/<.*>/,'').trim();
-      const subject = get('Subject') || '(No subject)';
+      const subject = get('Subject') || get('subject') || '(No subject)';
       const snippet = msg.snippet || '';
+      const threadId = msg.threadId || msg.id;
       const isStarred = (msg.labelIds||[]).includes('STARRED');
       const isRidgeline = get('From').includes('@ridgelineei.com');
       const looksLikeQuestion = /\?/.test(snippet) || /\?/.test(subject);
       const looksLikeTask = /please|can you|could you|need you|action required|follow up|asap/i.test(snippet+subject);
       if(looksLikeQuestion||looksLikeTask) actionCount++;
-      return `<div class="email-item">
-        <div class="email-from">${esc(from)}${isRidgeline?' <span style="color:var(--blue);font-size:9px;">@ridgelineei</span>':''}</div>
+      const gmailUrl = `https://mail.google.com/mail/u/0/#inbox/${threadId}`;
+      return `<div class="email-item" id="email-${msg.id}">
+        <div class="email-header-row">
+          <div class="email-from">${esc(from)}${isRidgeline?' <span style="color:var(--blue);font-size:9px;">@ridgelineei</span>':''}</div>
+          <div class="email-actions">
+            <a href="${gmailUrl}" target="_blank" class="email-action-btn" title="Open in Gmail">↗</a>
+            <button class="email-action-btn" onclick="dismissEmail('${msg.id}')" title="Dismiss">✕</button>
+          </div>
+        </div>
         <div class="email-subject">${esc(subject)}</div>
         <div class="email-snippet">${esc(snippet)}</div>
         <div>
@@ -611,6 +654,7 @@ function renderReminders(){
         <div class="reminder-name">${esc(r.text)}</div>
         <div class="reminder-due ${isOverdue?'overdue':isToday?'today':''}">${isOverdue?'⚠ Overdue · ':isToday?'Today · ':''} ${dueStr}</div>
       </div>
+      <button onclick="deleteReminder('${r.id}')" class="email-action-btn" style="opacity:0.4;flex-shrink:0;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.4" title="Remove">✕</button>
     </div>`;
   }).join('');
   return active.filter(r=>new Date(r.due)<now).length;
@@ -619,6 +663,10 @@ function renderReminders(){
 function doneReminder(id){
   const r = reminders.find(x=>x.id===id);
   if(r){ r.done=true; saveLocal(); renderReminders(); }
+}
+function deleteReminder(id){
+  reminders = reminders.filter(x=>x.id!==id);
+  saveLocal(); renderReminders();
 }
 
 async function saveNewReminder(){
@@ -672,90 +720,99 @@ async function generateBriefing(force=false){
   const timeEl = document.getElementById('briefingTime');
   const today = new Date().toDateString();
   const cached = localStorage.getItem('dash_briefing_date');
-  const cachedText = localStorage.getItem('dash_briefing_text');
+  const cachedHTML = localStorage.getItem('dash_briefing_html');
 
-  if(!force && cached === today && cachedText){
-    el.innerHTML = `<div class="briefing-text">${esc(cachedText)}</div><div class="briefing-meta">Generated today · Click "Refresh Briefing" to regenerate</div>`;
+  if(!force && cached === today && cachedHTML){
+    el.innerHTML = cachedHTML;
     timeEl.textContent = 'Today';
     return;
   }
 
-  const key = getAnthropicKey();
-  if(!key){
-    el.innerHTML = '<div class="briefing-loading">Add your Anthropic API key in Settings to enable the daily briefing.</div>';
-    return;
-  }
+  el.innerHTML = '<div class="briefing-loading"><span class="spin">⟳</span> Building your briefing…</div>';
 
-  el.innerHTML = '<div class="briefing-loading"><span class="spin">⟳</span> Generating your briefing…</div>';
+  const now = new Date();
+  const lines = [];
+  const todayStr = now.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
+  lines.push(`<strong>${todayStr}</strong>`);
 
-  // Gather context
-  let context = `Today is ${new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'})}.\n\n`;
-
-  // Tasks summary
+  // Tasks
   try {
     const r = await fetch(TASKS_RAW + '?v=' + Date.now());
     if(r.ok){
       const d = await r.json();
-      const cards = (d.cards||d||[]);
-      const active = cards.filter(c=>c.col!=='done');
-      const overdue = active.filter(c=>c.due&&new Date(c.due+'T00:00:00')<new Date());
-      const highPri = active.filter(c=>c.priority==='high');
-      context += `TASKS: ${active.length} active tasks. ${highPri.length} high priority. ${overdue.length} overdue.\n`;
-      if(highPri.length) context += `High priority: ${highPri.slice(0,3).map(c=>c.name||c.task).join(', ')}\n`;
-    }
-  } catch(e){}
-
-  // Prefab summary
-  try {
-    const r = await fetch(PREFAB_RAW + '?v=' + Date.now());
-    if(r.ok){
-      const projects = await r.json();
-      const active = projects.filter(p=>p.status!=='received');
-      if(active.length){
-        context += `\nPREFAB: ${active.length} active project(s). `;
-        active.forEach(p=>{
-          const days = p.onSiteDate ? Math.floor((new Date(p.onSiteDate)-new Date())/(1000*60*60*24)) : null;
-          const total = p.assemblies.length;
-          const done  = p.assemblies.filter(a=>a.labelDone).length;
-          context += `${p.name} (${done}/${total} done${days!==null?', '+days+'d to site':''}).`;
-        });
-        context += '\n';
+      const cards = d.cards || d || [];
+      const active  = cards.filter(c => c.col !== 'done');
+      const today_  = cards.filter(c => c.col === 'today');
+      const overdue = active.filter(c => c.due && new Date(c.due+'T00:00:00') < now);
+      const highPri = active.filter(c => c.priority === 'high');
+      let taskLine = `📋 <strong>${active.length} active task${active.length!==1?'s':''}</strong>`;
+      if(today_.length)  taskLine += ` · ${today_.length} in progress`;
+      if(highPri.length) taskLine += ` · <span style="color:var(--red)">${highPri.length} high priority</span>`;
+      if(overdue.length) taskLine += ` · <span style="color:var(--red)">⚠ ${overdue.length} overdue</span>`;
+      lines.push(taskLine);
+      if(highPri.length){
+        lines.push(`<span style="color:var(--text2);font-size:12px;margin-left:20px;">↳ ${highPri.slice(0,3).map(c=>esc(c.name||c.task||'Untitled')).join(' · ')}</span>`);
       }
     }
   } catch(e){}
 
   // Reminders
-  const activeReminders = reminders.filter(r=>!r.done);
-  if(activeReminders.length){
-    context += `\nREMINDERS: ${activeReminders.length} pending. `;
-    const overdue = activeReminders.filter(r=>new Date(r.due)<new Date());
-    if(overdue.length) context += `${overdue.length} overdue: ${overdue.map(r=>r.text).join(', ')}. `;
-    context += '\n';
+  const activeRem = reminders.filter(r=>!r.done);
+  const overdueRem = activeRem.filter(r=>new Date(r.due)<now);
+  const todayRem  = activeRem.filter(r=>{ const d=new Date(r.due); return d>=now && d.toDateString()===now.toDateString(); });
+  if(activeRem.length){
+    let remLine = `⏰ <strong>${activeRem.length} reminder${activeRem.length!==1?'s':''}</strong>`;
+    if(overdueRem.length) remLine += ` · <span style="color:var(--red)">⚠ ${overdueRem.length} overdue</span>`;
+    if(todayRem.length)   remLine += ` · ${todayRem.length} due today`;
+    lines.push(remLine);
+    if(overdueRem.length){
+      lines.push(`<span style="color:var(--text2);font-size:12px;margin-left:20px;">↳ ${overdueRem.slice(0,2).map(r=>esc(r.text)).join(' · ')}</span>`);
+    }
   }
 
+  // Prefab
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method:'POST',
-      headers:{ 'Content-Type':'application/json', 'x-api-key':key, 'anthropic-version':'2023-06-01' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 300,
-        messages:[{ role:'user', content:`You are a concise daily briefing assistant for James, an electrical project manager at Ridgeline Electrical Industries. Based on this data, write a short 2-3 sentence briefing summarizing his day — what needs attention, any urgent items, and a quick motivating note. Be direct and practical, no fluff.\n\n${context}` }]
-      })
-    });
-    if(!res.ok) throw new Error('API error');
-    const data = await res.json();
-    const text = data.content?.[0]?.text || 'Could not generate briefing.';
-    localStorage.setItem('dash_briefing_date', today);
-    localStorage.setItem('dash_briefing_text', text);
-    el.innerHTML = `<div class="briefing-text">${esc(text)}</div><div class="briefing-meta">Generated ${new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})} · Click "Refresh Briefing" to regenerate</div>`;
-    timeEl.textContent = 'Today';
-  } catch(e){
-    el.innerHTML = `<div class="briefing-loading">Could not generate briefing — check your API key in Settings.</div>`;
+    const r = await fetch(PREFAB_RAW + '?v=' + Date.now());
+    if(r.ok){
+      const projects = await r.json();
+      const active = projects.filter(p=>p.status!=='received'&&p.status!=='shipped');
+      const urgent = active.filter(p=>{ const d=p.onSiteDate?Math.floor((new Date(p.onSiteDate)-now)/(1000*60*60*24)):null; return d!==null&&d<=3; });
+      if(active.length){
+        let prefLine = `📦 <strong>${active.length} prefab project${active.length!==1?'s':''}</strong>`;
+        if(urgent.length) prefLine += ` · <span style="color:var(--red)">⚠ ${urgent.length} due soon</span>`;
+        lines.push(prefLine);
+        urgent.slice(0,2).forEach(p=>{
+          const days=Math.floor((new Date(p.onSiteDate)-now)/(1000*60*60*24));
+          lines.push(`<span style="color:var(--text2);font-size:12px;margin-left:20px;">↳ ${esc(p.name)} — ${days<0?Math.abs(days)+'d overdue':days===0?'due today':days+'d to site'}</span>`);
+        });
+      }
+    }
+  } catch(e){}
+
+  // All good message
+  if(lines.length === 1){
+    lines.push('✅ <strong>All clear</strong> — no urgent items today.');
   }
+
+  const html = `<div class="briefing-text" style="display:flex;flex-direction:column;gap:6px;font-size:13px;line-height:1.6;">${lines.map(l=>`<div>${l}</div>`).join('')}</div><div class="briefing-meta" style="margin-top:10px;">Updated ${now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})} · Click "Refresh Briefing" to update</div>`;
+  localStorage.setItem('dash_briefing_date', today);
+  localStorage.setItem('dash_briefing_html', html);
+  el.innerHTML = html;
+  timeEl.textContent = 'Today';
 }
 
 function refreshBriefing(){ generateBriefing(true); }
+
+/* ═══════════════════════════════
+   EMAIL DISMISS
+═══════════════════════════════ */
+function dismissEmail(id){
+  const dismissed = JSON.parse(localStorage.getItem('dash_dismissed_emails')||'[]');
+  dismissed.push(id);
+  localStorage.setItem('dash_dismissed_emails', JSON.stringify(dismissed));
+  const el = document.getElementById('email-'+id);
+  if(el){ el.style.opacity='0'; el.style.transition='opacity 0.2s'; setTimeout(()=>el.remove(),200); }
+}
 
 /* ═══════════════════════════════
    REFRESH ALL
@@ -776,16 +833,12 @@ async function refreshAll(){
 ═══════════════════════════════ */
 function openSettings(){
   document.getElementById('ghTokenInput').value = getGHToken();
-  document.getElementById('anthropicKeyInput').value = getAnthropicKey();
-  document.getElementById('anthropicKeyInput').style.fontFamily = 'var(--mono)';
   document.getElementById('settingsModal').style.display = 'flex';
 }
 function closeSettings(){ document.getElementById('settingsModal').style.display = 'none'; }
 function saveSettings(){
   const gh  = document.getElementById('ghTokenInput').value.trim();
-  const ant = document.getElementById('anthropicKeyInput').value.trim().replace(/\s+/g,'');
-  if(gh)  localStorage.setItem('dash_gh_token', gh);
-  if(ant) localStorage.setItem('dash_anthropic_key', ant);
+  if(gh) localStorage.setItem('dash_gh_token', gh);
   closeSettings();
   refreshAll();
 }
@@ -830,6 +883,12 @@ if(!getGHToken() && !getAnthropicKey()){
   refreshAll();
   generateBriefing();
 }
+
+// Auto-refresh every 10 minutes
+refreshTimer = setInterval(refreshAll, 10 * 60 * 1000);
+</script>
+</body>
+</html>
 
 // Auto-refresh every 10 minutes
 refreshTimer = setInterval(refreshAll, 10 * 60 * 1000);

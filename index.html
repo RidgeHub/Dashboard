@@ -207,8 +207,8 @@ body::before{content:'';position:fixed;inset:0;background-image:radial-gradient(
 @keyframes spin{to{transform:rotate(360deg)}}
 
 /* ── Modals ── */
-.modal-overlay{position:fixed;inset:0;background:rgba(30,10,0,0.6);z-index:200;display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(4px)}
-.modal{background:#fff;border-radius:16px 16px 0 0;border-top:2px solid var(--accent);width:100%;max-width:540px;padding:1.5rem;max-height:88vh;overflow-y:auto;box-shadow:var(--shadow-lg)}
+.modal-overlay{position:fixed;inset:0;background:rgba(10,20,50,0.6);z-index:200;display:flex;align-items:center;justify-content:center;padding:1rem;backdrop-filter:blur(4px)}
+.modal{background:#fff;border-radius:14px;border:1px solid var(--border2);border-top:3px solid var(--accent);width:100%;max-width:520px;padding:1.5rem;max-height:88vh;overflow-y:auto;box-shadow:var(--shadow-lg)}
 .modal-title{font-size:16px;font-weight:700;margin-bottom:1.25rem;color:var(--accent)}
 .form-group{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
 .form-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text3);font-family:var(--mono)}
@@ -298,15 +298,26 @@ input::placeholder,textarea::placeholder{color:var(--text3)}
       </div>
     </div>
 
-    <!-- Tasks -->
+    <!-- Today tasks -->
     <div class="panel">
       <div class="panel-header panel-header-blue">
-        <div class="panel-title">📋 Tasks</div>
+        <div class="panel-title">⚡ Today / In Progress</div>
         <div class="panel-header-actions">
           <a href="https://ridgehub.github.io/Tasks" target="_blank" class="panel-btn">Open →</a>
         </div>
       </div>
       <div class="panel-body" id="tasksBody"><div class="empty"><span class="spin">⟳</span></div></div>
+    </div>
+
+    <!-- This week tasks -->
+    <div class="panel">
+      <div class="panel-header" style="background:linear-gradient(135deg,#1a6fa0,#2a90c0);">
+        <div class="panel-title">📅 This Week</div>
+        <div class="panel-header-actions">
+          <a href="https://ridgehub.github.io/Tasks" target="_blank" class="panel-btn">Open →</a>
+        </div>
+      </div>
+      <div class="panel-body" id="weekTasksBody"><div class="empty"><span class="spin">⟳</span></div></div>
     </div>
 
     <!-- Calendar -->
@@ -509,45 +520,70 @@ async function loadWeather(){
 let cachedCards = [];
 async function loadTasks(){
   const el=document.getElementById('tasksBody');
+  const weekEl=document.getElementById('weekTasksBody');
   try{
     const res=await fetch(TASKS_RAW+'?v='+Date.now());
-    if(!res.ok)throw new Error();
+    if(!res.ok)throw new Error('HTTP '+res.status);
     const d=await res.json();
-    cachedCards=d.cards||d||[];
-    const active=cachedCards.filter(c=>c.col!=='done');
+    cachedCards=d.cards||[];
+    if(!Array.isArray(cachedCards))cachedCards=[];
+
+    // Today / In Progress — all tasks in 'today' column regardless of priority
+    const todayCards=cachedCards.filter(c=>c.col==='today');
     // Apply saved order
     if(taskOrder.length){
-      active.sort((a,b)=>{
+      todayCards.sort((a,b)=>{
         const ai=taskOrder.indexOf(a.id),bi=taskOrder.indexOf(b.id);
-        if(ai===-1&&bi===-1)return 0; if(ai===-1)return 1; if(bi===-1)return -1; return ai-bi;
+        if(ai===-1&&bi===-1)return 0;if(ai===-1)return 1;if(bi===-1)return -1;return ai-bi;
       });
-    } else {
-      const pri={high:0,med:1,low:2,'':3};
-      active.sort((a,b)=>(pri[a.priority||'']||3)-(pri[b.priority||'']||3));
     }
-    if(!active.length){el.innerHTML='<div class="empty">No active tasks</div>';return 0;}
-    el.innerHTML=active.slice(0,15).map(c=>{
+
+    // This week — 'week' and 'due' columns
+    const weekCards=cachedCards.filter(c=>c.col==='week'||c.col==='due');
+
+    const renderCard=(c)=>{
       const dueStr=c.due?new Date(c.due+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}):'';
-      const overdue=c.due&&new Date(c.due+'T00:00:00')<new Date()&&c.col!=='done';
+      const overdue=c.due&&new Date(c.due+'T00:00:00')<new Date();
       const priHTML=c.priority?`<span class="task-priority pri-${c.priority}">${c.priority}</span>`:'';
       const isRunning=timerTaskId===c.id;
       return `<div class="task-item" id="task-${c.id}" draggable="true" data-id="${c.id}">
-        <div class="task-drag-handle" title="Drag to reorder">⠿</div>
+        <div class="task-drag-handle" title="Drag">⠿</div>
         <div class="task-check" onclick="completeTask('${c.id}')" title="Mark done">✓</div>
         <div class="task-info">
           <div class="task-name">${esc(c.name||c.task||'Untitled')}</div>
           <div class="task-meta">${c.proj?'#'+esc(c.proj)+' · ':''}${dueStr?`<span class="${overdue?'task-due':''}">${overdue?'⚠ ':''} ${dueStr}</span>`:''}</div>
         </div>
         ${priHTML}
-        <button class="task-timer-btn ${isRunning?'running':''}" onclick="startTimer('${c.id}','${esc(c.name||c.task||'Task')}','${esc(c.proj||'')}')" title="${isRunning?'Running…':'Start timer'}">
+        <button class="task-timer-btn ${isRunning?'running':''}" onclick="startTimer('${c.id}','${esc(c.name||c.task||'Task')}','${esc(c.proj||'')}')" title="${isRunning?'Running':'Start timer'}">
           ${isRunning?'⏱ '+formatTime(timerSeconds):'▶'}
         </button>
       </div>`;
-    }).join('');
-    attachDragListeners();
-    const urgent=active.filter(c=>c.priority==='high'||(c.due&&new Date(c.due+'T00:00:00')<new Date())).length;
+    };
+
+    // Render today panel
+    if(!todayCards.length){
+      el.innerHTML='<div class="empty">No tasks in progress</div>';
+    } else {
+      el.innerHTML=todayCards.map(renderCard).join('');
+      attachDragListeners();
+    }
+
+    // Render week panel
+    if(weekEl){
+      if(!weekCards.length){
+        weekEl.innerHTML='<div class="empty">No upcoming tasks this week</div>';
+      } else {
+        weekEl.innerHTML=weekCards.map(renderCard).join('');
+      }
+    }
+
+    const urgent=todayCards.filter(c=>c.due&&new Date(c.due+'T00:00:00')<new Date()).length;
     return urgent;
-  }catch(e){el.innerHTML='<div class="empty">Could not load tasks</div>';return 0;}
+  }catch(e){
+    el.innerHTML=`<div class="empty">Could not load tasks<br><span style="font-size:10px;">${esc(e.message)}</span></div>`;
+    if(weekEl)weekEl.innerHTML='<div class="empty">Could not load</div>';
+    return 0;
+  }
 }
 
 /* ── Drag to reorder ── */

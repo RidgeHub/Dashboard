@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>RidgeHub — Daily Log</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#fdf8f3;--surface:#fff;--surface2:#fdf1e8;
+  --border:rgba(200,100,50,0.1);--border2:rgba(200,100,50,0.18);
+  --accent:#d4581a;--accent2:#f0a040;
+  --text:#1e140a;--text2:#7a5535;--text3:#c4956a;
+  --green:#1a7a4e;--green-bg:rgba(26,122,78,0.08);
+  --blue:#1a4fa0;--blue-bg:rgba(26,79,160,0.08);
+  --red:#c03020;
+  --mono:'DM Mono',monospace;--sans:'DM Sans',sans-serif;
+  --radius:10px;--shadow:0 2px 8px rgba(180,80,20,0.08);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;min-height:100vh}
+.site-header{padding:.75rem 1.25rem;background:var(--accent);display:flex;align-items:center;justify-content:space-between;gap:10px;box-shadow:0 2px 12px rgba(180,60,10,0.25)}
+.header-left{display:flex;align-items:center;gap:10px}
+.logo-mark{width:32px;height:32px;border-radius:7px;background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.3);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:12px;font-weight:500;color:#fff;text-decoration:none;flex-shrink:0}
+.header-title{font-size:15px;font-weight:700;color:#fff}
+.header-sub{font-size:10px;color:rgba(255,255,255,0.7);font-family:var(--mono)}
+.btn{background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);border-radius:6px;padding:6px 12px;font-size:12px;color:#fff;cursor:pointer;font-family:var(--sans);white-space:nowrap;transition:all 0.15s;text-decoration:none;display:inline-flex;align-items:center;gap:5px}
+.btn:hover{background:rgba(255,255,255,0.25)}
+.content{max-width:800px;margin:0 auto;padding:1.5rem 1.25rem 4rem}
+.date-nav{display:flex;align-items:center;gap:10px;margin-bottom:1.5rem;flex-wrap:wrap}
+.date-nav-title{font-size:18px;font-weight:700;flex:1}
+.day-section{background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius);overflow:hidden;margin-bottom:12px;box-shadow:var(--shadow)}
+.day-header{padding:10px 16px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;display:flex;align-items:center;justify-content:space-between}
+.day-title{font-size:13px;font-weight:700}
+.day-stats{font-size:11px;color:rgba(255,255,255,0.8);font-family:var(--mono);display:flex;gap:12px}
+.log-item{display:flex;align-items:flex-start;gap:12px;padding:10px 16px;border-bottom:1px solid var(--border);font-size:13px}
+.log-item:last-child{border-bottom:none}
+.log-icon{font-size:16px;flex-shrink:0;margin-top:1px}
+.log-info{flex:1;min-width:0}
+.log-task{font-weight:600;margin-bottom:2px}
+.log-meta{font-size:11px;color:var(--text2);font-family:var(--mono);display:flex;gap:10px;flex-wrap:wrap}
+.log-duration{font-family:var(--mono);font-size:12px;font-weight:500;color:var(--accent);flex-shrink:0}
+.log-type-task{border-left:3px solid var(--green)}
+.log-type-timer{border-left:3px solid var(--blue)}
+.log-type-meeting{border-left:3px solid var(--accent)}
+.summary-bar{display:flex;gap:16px;padding:10px 16px;background:var(--surface2);border-bottom:1px solid var(--border);flex-wrap:wrap}
+.summary-stat{display:flex;flex-direction:column;gap:2px}
+.summary-val{font-size:18px;font-weight:700;color:var(--accent);font-family:var(--mono);line-height:1}
+.summary-label{font-size:10px;color:var(--text3);font-family:var(--mono);text-transform:uppercase;letter-spacing:0.06em}
+.empty{text-align:center;padding:3rem;color:var(--text3);font-family:var(--mono);font-size:12px}
+@media print{.site-header .btn,.date-nav button{display:none!important}body{background:#fff}}
+</style>
+</head>
+<body>
+<div class="site-header">
+  <div class="header-left">
+    <a href="dashboard.html" class="logo-mark">REI</a>
+    <div>
+      <div class="header-title">Daily Log</div>
+      <div class="header-sub">Ridgeline Electrical Industries</div>
+    </div>
+  </div>
+  <div style="display:flex;gap:8px;">
+    <a href="dashboard.html" class="btn">← Dashboard</a>
+    <button class="btn" onclick="window.print()">🖨 Print</button>
+  </div>
+</div>
+
+<div class="content">
+  <div class="date-nav">
+    <div class="date-nav-title" id="dateTitle">Today's Log</div>
+    <button class="btn" style="background:var(--accent);border-color:var(--accent);color:#fff;" onclick="navDay(-1)">‹ Prev</button>
+    <button class="btn" style="background:var(--accent);border-color:var(--accent);color:#fff;" onclick="navDay(0)">Today</button>
+    <button class="btn" style="background:var(--accent);border-color:var(--accent);color:#fff;" onclick="navDay(1)">Next ›</button>
+  </div>
+  <div id="logContent"></div>
+</div>
+
+<script>
+let dayOffset = 0;
+
+function formatDur(seconds){
+  if(seconds < 60) return seconds+'s';
+  const m=Math.floor(seconds/60),h=Math.floor(m/60);
+  if(h>0) return `${h}h ${m%60}m`;
+  return `${m}m`;
+}
+
+function getDay(offset){
+  const d=new Date(); d.setDate(d.getDate()+offset); d.setHours(0,0,0,0); return d;
+}
+
+function renderLog(){
+  const day=getDay(dayOffset);
+  const isToday=dayOffset===0;
+  const label=isToday?'Today':day.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+  document.getElementById('dateTitle').textContent=label+"'s Log";
+
+  const allLogs=JSON.parse(localStorage.getItem('dash_daily_log')||'{}');
+  const dayKey=day.toDateString();
+  const entries=allLogs[dayKey]||[];
+
+  const el=document.getElementById('logContent');
+  if(!entries.length){el.innerHTML=`<div class="empty">No activity logged for ${label}.</div>`;return;}
+
+  // Stats
+  const timerEntries=entries.filter(e=>e.type==='timer');
+  const taskEntries=entries.filter(e=>e.type==='task_complete');
+  const totalTime=timerEntries.reduce((s,e)=>s+(e.seconds||0),0);
+
+  // Group by project
+  const byProj={};
+  entries.forEach(e=>{
+    const k=e.proj||'General';
+    if(!byProj[k])byProj[k]=[];
+    byProj[k].push(e);
+  });
+
+  let html=`<div class="day-section">
+    <div class="day-header">
+      <div class="day-title">${label}</div>
+      <div class="day-stats">
+        <span>${entries.length} activities</span>
+        ${totalTime?`<span>⏱ ${formatDur(totalTime)} tracked</span>`:''}
+        ${taskEntries.length?`<span>✓ ${taskEntries.length} tasks done</span>`:''}
+      </div>
+    </div>
+    <div class="summary-bar">
+      <div class="summary-stat"><div class="summary-val">${taskEntries.length}</div><div class="summary-label">Tasks Done</div></div>
+      <div class="summary-stat"><div class="summary-val">${formatDur(totalTime)}</div><div class="summary-label">Time Tracked</div></div>
+      <div class="summary-stat"><div class="summary-val">${timerEntries.length}</div><div class="summary-label">Timer Sessions</div></div>
+      <div class="summary-stat"><div class="summary-val">${Object.keys(byProj).length}</div><div class="summary-label">Projects</div></div>
+    </div>`;
+
+  entries.sort((a,b)=>new Date(a.time||a.endTime)-new Date(b.time||b.endTime)).forEach(e=>{
+    const time=new Date(e.time||e.endTime).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',hour12:true});
+    if(e.type==='task_complete'){
+      html+=`<div class="log-item log-type-task">
+        <div class="log-icon">✅</div>
+        <div class="log-info">
+          <div class="log-task">${esc(e.task)}</div>
+          <div class="log-meta"><span>${time}</span>${e.proj?`<span>#${esc(e.proj)}</span>`:''}<span>Task completed</span></div>
+        </div>
+      </div>`;
+    } else if(e.type==='timer'){
+      html+=`<div class="log-item log-type-timer">
+        <div class="log-icon">⏱</div>
+        <div class="log-info">
+          <div class="log-task">${esc(e.task)}</div>
+          <div class="log-meta"><span>Ended ${time}</span>${e.proj?`<span>#${esc(e.proj)}</span>`:''}</div>
+        </div>
+        <div class="log-duration">${formatDur(e.seconds)}</div>
+      </div>`;
+    }
+  });
+
+  html+='</div>';
+  el.innerHTML=html;
+}
+
+function navDay(dir){
+  if(dir===0)dayOffset=0;else dayOffset+=dir;
+  renderLog();
+}
+
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+renderLog();
+</script>
+</body>
+</html>

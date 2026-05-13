@@ -211,6 +211,46 @@ body::before{content:'';position:fixed;inset:0;background-image:radial-gradient(
 
 /* ── Empty/loading ── */
 .empty{font-size:13px;color:var(--text3);font-family:var(--mono);text-align:center;padding:1.25rem 0}
+
+/* ── Project cards on dashboard ── */
+.proj-card{background:var(--surface);border:1px solid var(--border2);border-radius:10px;overflow:hidden;box-shadow:0 2px 6px rgba(30,80,160,0.06);transition:box-shadow 0.2s}
+.proj-card:hover{box-shadow:0 4px 14px rgba(30,80,160,0.12)}
+.proj-card-header{display:flex;align-items:center;gap:12px;padding:13px 16px;cursor:pointer;user-select:none}
+.proj-card-header:hover{background:#f8faff}
+.proj-toggle{font-size:13px;color:var(--text3);transition:transform 0.2s;flex-shrink:0}
+.proj-toggle.open{transform:rotate(90deg)}
+.proj-header-info{flex:1;min-width:0}
+.proj-header-name{font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.proj-header-meta{font-size:12px;color:var(--text2);font-family:var(--mono);margin-top:2px}
+.proj-phase-pill{font-size:11px;font-family:var(--mono);padding:3px 10px;border-radius:99px;font-weight:500;white-space:nowrap;flex-shrink:0}
+.pill-prover{background:rgba(107,47,160,0.1);color:#6b2fa0;border:1px solid rgba(107,47,160,0.2)}
+.pill-design{background:rgba(26,95,180,0.1);color:#1a5fb4;border:1px solid rgba(26,95,180,0.2)}
+.pill-prefab{background:rgba(232,129,58,0.12);color:#b05010;border:1px solid rgba(232,129,58,0.25)}
+.pill-active{background:rgba(26,122,78,0.1);color:#1a7a4e;border:1px solid rgba(26,122,78,0.2)}
+.pill-complete{background:#f0f4f8;color:#8aaac8;border:1px solid #dde6f0}
+.proj-prog-wrap{width:80px;flex-shrink:0}
+.proj-prog-bar{height:5px;background:#dde6f0;border-radius:99px;overflow:hidden;margin-bottom:3px}
+.proj-prog-fill{height:100%;border-radius:99px;background:#1a5fb4;transition:width 0.4s}
+.proj-prog-fill.done{background:#1a7a4e}
+.proj-prog-label{font-size:10px;color:var(--text3);font-family:var(--mono);text-align:right}
+.proj-body{display:none;border-top:1px solid #eef2f7;padding:14px 16px;background:#fafcff}
+.proj-body.open{display:block}
+.proj-task-group{margin-bottom:10px}
+.proj-task-group-name{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:#8aaac8;font-family:var(--mono);margin-bottom:5px}
+.proj-task-item{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #eef2f7;font-size:14px}
+.proj-task-item:last-child{border-bottom:none}
+.proj-task-check{width:18px;height:18px;border-radius:4px;border:2px solid #dde6f0;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;color:transparent;transition:all 0.15s}
+.proj-task-check:hover{border-color:#1a7a4e;color:#1a7a4e}
+.proj-task-check.done{background:#1a7a4e;border-color:#1a7a4e;color:#fff}
+.proj-task-name{flex:1;color:#1a2540}
+.proj-task-name.done-task{text-decoration:line-through;color:#8aaac8}
+.proj-task-due{font-size:11px;font-family:var(--mono);color:#8aaac8;white-space:nowrap}
+.proj-task-due.overdue{color:#c03020}
+.proj-open-link{font-size:12px;color:#1a5fb4;text-decoration:none;font-family:var(--mono);display:inline-flex;align-items:center;gap:4px;margin-top:8px;padding:4px 10px;border:1px solid rgba(26,95,180,0.2);border-radius:5px;background:rgba(26,95,180,0.05)}
+.proj-open-link:hover{background:rgba(26,95,180,0.1)}
+.proj-info-row{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:10px;font-size:13px}
+.proj-info-item{color:#4a6080;font-family:var(--mono)}
+.proj-info-item span{color:#1a2540;font-weight:500}
 .spin{animation:spin 1s linear infinite;display:inline-block}
 @keyframes spin{to{transform:rotate(360deg)}}
 
@@ -381,6 +421,19 @@ input::placeholder,textarea::placeholder{color:var(--text3)}
         </div>
       </div>
       <div class="panel-body" id="prefabBody"><div class="empty"><span class="spin">⟳</span></div></div>
+    </div>
+
+    <!-- Active Projects -->
+    <div class="panel panel-full">
+      <div class="panel-header" style="background:linear-gradient(135deg,#1a3a6a,#1a5fb4);">
+        <div class="panel-title">🏗️ Active Projects</div>
+        <div class="panel-header-actions">
+          <a href="https://ridgehub.github.io/Projects" target="_blank" class="panel-btn">All Projects →</a>
+        </div>
+      </div>
+      <div class="panel-body auto" id="activeProjectsBody" style="padding:10px 14px;gap:8px;">
+        <div class="empty"><span class="spin">⟳</span></div>
+      </div>
     </div>
 
   </div>
@@ -796,6 +849,8 @@ async function toggleWeekView(){
 function closeWeekView(){document.getElementById('weekModal').style.display='none';}
 
 /* ── Email ── */
+const emailCache = {};
+
 async function loadEmail(){
   const el=document.getElementById('emailBody');
   const notice=document.getElementById('gmailAuthNotice');
@@ -839,19 +894,18 @@ async function loadEmail(){
       const looksLikeTask=/please|can you|could you|need you|action required|follow up|asap/i.test(snippet+subject);
       if(looksLikeQ||looksLikeTask)actionCount++;
       const gmailUrl=`https://mail.google.com/mail/u/0/#inbox/${threadId}`;
-      const expandArgs=`'${msg.id}',${JSON.stringify(subject)},${JSON.stringify(get('From'))},${JSON.stringify(get('Date'))},${JSON.stringify(snippet)},'${threadId}'`;
-      return `<div class="email-item" id="email-${msg.id}">
+      // Store email data for expand modal
+      emailCache[msg.id] = {subject, from: get('From'), date: get('Date'), snippet, threadId, gmailUrl};
+      return `<div class="email-item" id="email-${msg.id}" onclick="openEmailExpand('${msg.id}')">
         <div class="email-header-row">
-          <div class="email-from">${esc(from)}${isRidgeline?' <span style="color:var(--blue);font-size:9px;">@REI</span>':''}</div>
+          <div class="email-from">${esc(from)}${isRidgeline?' <span style="color:var(--blue);font-size:11px;">@REI</span>':''}</div>
           <div class="email-actions">
             <a href="${gmailUrl}" target="_blank" class="email-action-btn" title="Open in Gmail" onclick="event.stopPropagation()">↗</a>
             <button class="email-action-btn" onclick="event.stopPropagation();dismissEmail('${msg.id}')" title="Dismiss">✕</button>
           </div>
         </div>
-        <div onclick="openEmailExpand(${expandArgs})" style="cursor:pointer;">
-          <div class="email-subject">${esc(subject)}</div>
-          <div class="email-snippet">${esc(snippet)}</div>
-        </div>
+        <div class="email-subject">${esc(subject)}</div>
+        <div class="email-snippet">${esc(snippet)}</div>
         <div>${isStarred?'<span class="email-tag tag-starred">★ starred</span>':''}${looksLikeQ?'<span class="email-tag tag-question">? question</span>':''}${looksLikeTask?'<span class="email-tag tag-action">→ action</span>':''}</div>
       </div>`;
     }).join('');
@@ -859,12 +913,16 @@ async function loadEmail(){
   }catch(e){el.innerHTML='<div class="empty">Could not load email</div>';return 0;}
 }
 let expandEmailId = null;
-function openEmailExpand(id, subject, from, date, snippet, threadId){
+function openEmailExpand(id){
+  const e = emailCache[id];
+  if(!e) return;
   expandEmailId = id;
-  document.getElementById('expandSubject').textContent = subject || '(No subject)';
-  document.getElementById('expandMeta').innerHTML = `<span><strong>From:</strong> ${esc(from)}</span><span><strong>Date:</strong> ${esc(date)}</span>`;
-  document.getElementById('expandBody').textContent = snippet || '(No preview available — open in Gmail to read full email)';
-  document.getElementById('expandGmailLink').href = `https://mail.google.com/mail/u/0/#inbox/${threadId}`;
+  document.getElementById('expandSubject').textContent = e.subject || '(No subject)';
+  const fromClean = e.from.replace(/<.*?>/g,'').trim();
+  const dateClean = e.date ? new Date(e.date).toLocaleString('en-US',{weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit',hour12:true}) : '';
+  document.getElementById('expandMeta').innerHTML = `<span><strong>From:</strong> ${esc(fromClean)}</span><span><strong>Date:</strong> ${esc(dateClean)}</span>`;
+  document.getElementById('expandBody').textContent = e.snippet || '(No preview available — open in Gmail to read full email)';
+  document.getElementById('expandGmailLink').href = e.gmailUrl;
   document.getElementById('emailExpandOverlay').classList.add('open');
 }
 function closeEmailExpand(){ document.getElementById('emailExpandOverlay').classList.remove('open'); expandEmailId=null; }
@@ -1073,10 +1131,120 @@ function closeNewTask(){document.getElementById('newTaskModal').style.display='n
 function openNewReminder(){document.getElementById('nrText').value='';document.getElementById('nrDue').value='';document.getElementById('nrAddCal').checked=false;document.getElementById('newReminderModal').style.display='flex';setTimeout(()=>document.getElementById('nrText').focus(),100);}
 function closeNewReminder(){document.getElementById('newReminderModal').style.display='none';}
 
+/* ── Active Projects ── */
+const PROJECTS_RAW = 'https://raw.githubusercontent.com/RidgeHub/Projects/main/projects.json';
+let dashProjects = [];
+
+async function loadActiveProjects(){
+  const el = document.getElementById('activeProjectsBody');
+  try{
+    const res = await fetch(PROJECTS_RAW + '?v=' + Date.now());
+    if(res.status === 404){ el.innerHTML='<div class="empty">No projects yet — create one in the Projects hub.</div>'; return 0; }
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    dashProjects = await res.json();
+    const active = dashProjects.filter(p => p.phase !== 'complete');
+    if(!active.length){ el.innerHTML='<div class="empty">No active projects</div>'; return 0; }
+    const PHASE_LABELS = {prover:'ProVer',design:'Design',prefab:'Prefab',active:'Active',complete:'Complete'};
+    const PHASE_PILL   = {prover:'pill-prover',design:'pill-design',prefab:'pill-prefab',active:'pill-active',complete:'pill-complete'};
+    el.innerHTML = active.map(p => {
+      const tasks = p.tasks||[];
+      const done  = tasks.filter(t=>t.done).length;
+      const total = tasks.length;
+      const pct   = total ? Math.round((done/total)*100) : 0;
+      const open  = tasks.filter(t=>!t.done);
+      const groups = [...new Set(open.map(t=>t.group))];
+      const phase = p.phase||'active';
+      const today = new Date();
+      // Build task groups HTML for expanded view
+      const groupsHTML = groups.map(g => {
+        const gt = open.filter(t=>t.group===g).slice(0,5);
+        return `<div class="proj-task-group">
+          <div class="proj-task-group-name">${esc(g)}</div>
+          ${gt.map(t => {
+            const dueStr = t.due ? new Date(t.due+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '';
+            const overdue = t.due && new Date(t.due+'T00:00:00') < today;
+            return `<div class="proj-task-item">
+              <div class="proj-task-check" onclick="toggleDashProjectTask('${p.id}','${t.id}',this)">${t.done?'✓':''}</div>
+              <div class="proj-task-name">${esc(t.task.replace(/^\[.*?\]\s*/,''))}</div>
+              ${dueStr?`<div class="proj-task-due ${overdue?'overdue':''}">${overdue?'⚠ ':''}${dueStr}</div>`:''}
+            </div>`;
+          }).join('')}
+        </div>`;
+      }).join('');
+      const infoHTML = [
+        p.gc?`<div class="proj-info-item">GC: <span>${esc(p.gc)}</span></div>`:'',
+        p.inWall?`<div class="proj-info-item">In-Wall: <span>${esc(p.inWall)}</span></div>`:'',
+        p.overhead?`<div class="proj-info-item">Overhead: <span>${esc(p.overhead)}</span></div>`:'',
+        p.devColor?`<div class="proj-info-item">Devices: <span>${esc(p.devColor)}</span></div>`:'',
+        p.proVerDate?`<div class="proj-info-item">ProVer: <span>${new Date(p.proVerDate+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</span></div>`:'',
+      ].filter(Boolean).join('');
+      return `<div class="proj-card" id="dashproj-${p.id}">
+        <div class="proj-card-header" onclick="toggleDashProject('${p.id}')">
+          <div class="proj-toggle" id="toggle-${p.id}">›</div>
+          <div class="proj-header-info">
+            <div class="proj-header-name">${esc(p.name)}${p.num?` <span style="font-size:12px;font-weight:400;color:#8aaac8;">#${esc(p.num)}</span>`:''}</div>
+            <div class="proj-header-meta">${done}/${total} tasks · ${open.length} remaining</div>
+          </div>
+          <span class="proj-phase-pill ${PHASE_PILL[phase]||'pill-active'}">${PHASE_LABELS[phase]||phase}</span>
+          <div class="proj-prog-wrap">
+            <div class="proj-prog-bar"><div class="proj-prog-fill ${pct===100?'done':''}" style="width:${pct}%"></div></div>
+            <div class="proj-prog-label">${pct}%</div>
+          </div>
+        </div>
+        <div class="proj-body" id="projbody-${p.id}">
+          ${infoHTML?`<div class="proj-info-row">${infoHTML}</div>`:''}
+          ${groupsHTML||'<div class="empty" style="padding:0.5rem 0;">All tasks complete 🎉</div>'}
+          <a href="https://ridgehub.github.io/Projects/project.html?id=${p.id}" target="_blank" class="proj-open-link">↗ Open Full Project</a>
+        </div>
+      </div>`;
+    }).join('');
+    return active.length;
+  }catch(e){
+    el.innerHTML='<div class="empty">Could not load projects</div>';
+    return 0;
+  }
+}
+
+function toggleDashProject(id){
+  const body = document.getElementById('projbody-'+id);
+  const toggle = document.getElementById('toggle-'+id);
+  if(!body||!toggle) return;
+  const isOpen = body.classList.contains('open');
+  body.classList.toggle('open', !isOpen);
+  toggle.classList.toggle('open', !isOpen);
+}
+
+async function toggleDashProjectTask(projId, taskId, el){
+  const proj = dashProjects.find(p=>p.id===projId);
+  if(!proj) return;
+  const task = (proj.tasks||[]).find(t=>t.id===taskId);
+  if(!task) return;
+  task.done = !task.done;
+  task.doneAt = task.done ? new Date().toISOString() : null;
+  el.classList.toggle('done', task.done);
+  el.textContent = task.done ? '✓' : '';
+  el.parentElement.querySelector('.proj-task-name').classList.toggle('done-task', task.done);
+  // Save back to projects.json
+  const token = getGHToken();
+  if(!token) return;
+  try{
+    const meta = await fetch('https://api.github.com/repos/RidgeHub/Projects/contents/projects.json',{headers:{Authorization:`token ${token}`,Accept:'application/vnd.github.v3+json'}});
+    if(!meta.ok) return;
+    const d = await meta.json();
+    const sha = d.sha;
+    await fetch('https://api.github.com/repos/RidgeHub/Projects/contents/projects.json',{
+      method:'PUT',
+      headers:{Authorization:`token ${token}`,Accept:'application/vnd.github.v3+json','Content-Type':'application/json'},
+      body:JSON.stringify({message:'Update task from dashboard',content:btoa(unescape(encodeURIComponent(JSON.stringify(dashProjects,null,2)))),sha})
+    });
+  }catch(e){}
+}
+
 /* ── Refresh all ── */
 async function refreshAll(){
   const btn=document.getElementById('refreshBtn');btn.textContent='↺ Refreshing…';
   const [taskU,,emailA,prefabU]= await Promise.all([loadTasks(),loadCalendar(),loadEmail(),loadPrefab()]);
+  loadActiveProjects();
   const remU=renderReminders();
   updateBadge((taskU||0)+(emailA||0)+(prefabU||0)+(remU||0));
   btn.textContent='↺ Refresh';

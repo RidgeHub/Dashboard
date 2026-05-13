@@ -323,7 +323,7 @@ input::placeholder,textarea::placeholder{color:var(--text3)}
     <!-- Calendar -->
     <div class="panel">
       <div class="panel-header panel-header-teal">
-        <div class="panel-title" id="calTitle">📅 Today</div>
+        <div class="panel-title" id="calTitle">📅 Calendar</div>
         <div class="panel-header-actions">
           <button class="panel-btn" onclick="calNav(-1)">‹</button>
           <button class="panel-btn" onclick="calNav(0)">Today</button>
@@ -451,8 +451,8 @@ input::placeholder,textarea::placeholder{color:var(--text3)}
 /* ── Config ── */
 const TASKS_REPO  = 'RidgeHub/Tasks';
 const TASKS_FILE  = 'tasks.json';
-const TASKS_API   = `https://api.github.com/repos/${TASKS_REPO}/contents/${TASKS_FILE}`;
-const TASKS_RAW   = `https://raw.githubusercontent.com/${TASKS_REPO}/main/${TASKS_FILE}`;
+const TASKS_API   = 'https://api.github.com/repos/RidgeHub/Tasks/contents/tasks.json';
+const TASKS_RAW   = 'https://raw.githubusercontent.com/RidgeHub/Tasks/main/tasks.json';
 const PREFAB_RAW  = 'https://raw.githubusercontent.com/RidgeHub/Prefab/main/prefab-projects.json';
 const DASH_KEY    = 'ridgehub_dashboard_v2';
 const GCAL_CLIENT = '967630255564-bdnrkm82rjd2r9m38relv62rnn00i12b.apps.googleusercontent.com';
@@ -716,7 +716,7 @@ async function loadCalendar(){
   const day=new Date(base); day.setDate(day.getDate()+calOffset);
   const next=new Date(day); next.setDate(next.getDate()+1);
   const isToday=calOffset===0;
-  title.textContent=isToday?'📅 Today':'📅 '+day.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+  title.textContent='📅 '+day.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
   try{
     const res=await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${day.toISOString()}&timeMax=${next.toISOString()}&singleEvents=true&orderBy=startTime&maxResults=20`,{headers:{Authorization:`Bearer ${googleToken}`}});
     if(res.status===401){googleToken=null;localStorage.removeItem('dash_google_token');notice.style.display='';el.innerHTML='<div class="empty">Session expired</div>';return 0;}

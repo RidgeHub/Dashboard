@@ -7,19 +7,19 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
 <style>
 :root{
-  --bg:#fdf8f3;--surface:#fff;--surface2:#fdf1e8;
-  --border:rgba(200,100,50,0.1);--border2:rgba(200,100,50,0.18);
-  --accent:#d4581a;--accent2:#f0a040;
-  --text:#1e140a;--text2:#7a5535;--text3:#c4956a;
+  --bg:#f0f4f8;--surface:#fff;--surface2:#eef2f7;
+  --border:rgba(30,80,160,0.08);--border2:rgba(30,80,160,0.15);
+  --accent:#1a5fb4;--accent2:#3584e4;
+  --text:#1a2540;--text2:#4a6080;--text3:#8aaac8;
   --green:#1a7a4e;--green-bg:rgba(26,122,78,0.08);
   --blue:#1a4fa0;--blue-bg:rgba(26,79,160,0.08);
   --red:#c03020;
   --mono:'DM Mono',monospace;--sans:'DM Sans',sans-serif;
-  --radius:10px;--shadow:0 2px 8px rgba(180,80,20,0.08);
+  --radius:10px;--shadow:0 2px 8px rgba(30,80,160,0.08);
 }
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;min-height:100vh}
-.site-header{padding:.75rem 1.25rem;background:var(--accent);display:flex;align-items:center;justify-content:space-between;gap:10px;box-shadow:0 2px 12px rgba(180,60,10,0.25)}
+.site-header{padding:.75rem 1.25rem;background:linear-gradient(135deg,#1a5fb4,#3584e4);display:flex;align-items:center;justify-content:space-between;gap:10px;box-shadow:0 2px 12px rgba(20,60,140,0.25)}
 .header-left{display:flex;align-items:center;gap:10px}
 .logo-mark{width:32px;height:32px;border-radius:7px;background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.3);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:12px;font-weight:500;color:#fff;text-decoration:none;flex-shrink:0}
 .header-title{font-size:15px;font-weight:700;color:#fff}
@@ -30,7 +30,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 .date-nav{display:flex;align-items:center;gap:10px;margin-bottom:1.5rem;flex-wrap:wrap}
 .date-nav-title{font-size:18px;font-weight:700;flex:1}
 .day-section{background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius);overflow:hidden;margin-bottom:12px;box-shadow:var(--shadow)}
-.day-header{padding:10px 16px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;display:flex;align-items:center;justify-content:space-between}
+.day-header{padding:10px 16px;background:linear-gradient(135deg,#1a5fb4,#3584e4);color:#fff;display:flex;align-items:center;justify-content:space-between}
 .day-title{font-size:13px;font-weight:700}
 .day-stats{font-size:11px;color:rgba(255,255,255,0.8);font-family:var(--mono);display:flex;gap:12px}
 .log-item{display:flex;align-items:flex-start;gap:12px;padding:10px 16px;border-bottom:1px solid var(--border);font-size:13px}
@@ -69,9 +69,9 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 <div class="content">
   <div class="date-nav">
     <div class="date-nav-title" id="dateTitle">Today's Log</div>
-    <button class="btn" style="background:var(--accent);border-color:var(--accent);color:#fff;" onclick="navDay(-1)">‹ Prev</button>
-    <button class="btn" style="background:var(--accent);border-color:var(--accent);color:#fff;" onclick="navDay(0)">Today</button>
-    <button class="btn" style="background:var(--accent);border-color:var(--accent);color:#fff;" onclick="navDay(1)">Next ›</button>
+    <button class="btn" style="background:linear-gradient(135deg,#1a5fb4,#3584e4);border-color:var(--accent);color:#fff;" onclick="navDay(-1)">‹ Prev</button>
+    <button class="btn" style="background:linear-gradient(135deg,#1a5fb4,#3584e4);border-color:var(--accent);color:#fff;" onclick="navDay(0)">Today</button>
+    <button class="btn" style="background:linear-gradient(135deg,#1a5fb4,#3584e4);border-color:var(--accent);color:#fff;" onclick="navDay(1)">Next ›</button>
   </div>
   <div id="logContent"></div>
 </div>

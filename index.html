@@ -50,7 +50,7 @@ body::before{content:'';position:fixed;inset:0;background-image:radial-gradient(
 .btn-sm{padding:6px 12px;font-size:12px}
 
 /* ── Grid ── */
-.grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;padding:1.25rem;padding-bottom:80px;position:relative;z-index:1}
+.grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;padding:1.25rem;padding-bottom:80px;position:relative;z-index:1;max-width:1200px;margin:0 auto;width:100%}
 @media(max-width:900px){.grid{grid-template-columns:1fr 1fr}}
 @media(max-width:600px){.grid{grid-template-columns:1fr;padding:1rem}}
 
@@ -308,7 +308,7 @@ input::placeholder,textarea::placeholder{color:var(--text3)}
   </div>
 
   <!-- Active timer bar -->
-  <div class="active-timer-bar" id="activeTimerBar">
+  <div class="active-timer-bar" id="activeTimerBar" style="padding:0;"><div style="max-width:1200px;margin:0 auto;width:100%;padding:8px 1.25rem;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
     <div class="timer-task-name" id="timerTaskName">No task</div>
     <div class="pomodoro-indicator" id="pomodoroIndicator"></div>
     <div class="timer-display" id="timerDisplay">00:00</div>
@@ -317,17 +317,17 @@ input::placeholder,textarea::placeholder{color:var(--text3)}
       <button class="timer-btn" onclick="stopTimer()">■ Stop</button>
       <button class="timer-btn" onclick="openFocusMode()">⚡</button>
     </div>
-  </div>
+  </div></div>
 
   <!-- Quick actions -->
-  <div class="quick-actions">
+  <div class="quick-actions" style="padding:0;"><div style="max-width:1200px;margin:0 auto;width:100%;padding:.8rem 1.25rem;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
     <button class="btn btn-primary btn-sm" onclick="openNewTask()">+ Task</button>
     <button class="btn btn-sm" onclick="openNewReminder()">⏰ Reminder</button>
     <button class="btn btn-sm" onclick="refreshBriefing()">✦ Briefing</button>
     <button class="btn btn-sm" onclick="refreshAll()" id="refreshBtn">↺ Refresh</button>
     <button class="btn btn-sm" onclick="toggleWeekView()" id="weekViewBtn">📅 Week View</button>
     <a href="log.html" class="btn btn-sm">📋 Daily Log</a>
-  </div>
+  </div></div>
 
   <!-- Grid -->
   <div class="grid">

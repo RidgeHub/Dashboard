@@ -567,14 +567,12 @@ function updateClock(){
 
 /* ── Google OAuth ── */
 function connectGoogle(){
-  // Use code flow to get refresh token
   const p=new URLSearchParams({
     client_id:GCAL_CLIENT,
     redirect_uri:REDIRECT,
     response_type:'token',
     scope:GCAL_SCOPE,
-    prompt:'consent',
-    access_type:'offline'
+    prompt:'consent'
   });
   window.location.href=`https://accounts.google.com/o/oauth2/v2/auth?${p}`;
 }
